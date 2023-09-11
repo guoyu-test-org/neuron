@@ -1,5 +1,4 @@
-import { getConnection } from 'typeorm'
-import { CONNECTION_NOT_FOUND_NAME } from '../database/chain/ormconfig'
+import { CONNECTION_NOT_FOUND_NAME, getConnection } from '../database/chain/ormconfig'
 import { FailedTransaction, TransactionPersistor } from '../services/tx'
 import RpcService from '../services/rpc-service'
 import NetworksService from '../services/networks'

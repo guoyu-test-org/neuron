@@ -1,4 +1,4 @@
-import { createConnection, getConnectionOptions, getConnection } from 'typeorm'
+import { DataSource } from 'typeorm'
 import { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions'
 import path from 'path'
 
@@ -62,15 +62,13 @@ const dbPath = (name: string): string => {
   return path.join(env.fileBasePath, 'cells', filename)
 }
 
-const connectOptions = async (genesisBlockHash: string): Promise<SqliteConnectionOptions> => {
-  const connectionOptions = await getConnectionOptions()
+const getConnectionOptions = (genesisBlockHash: string): SqliteConnectionOptions => {
   const database = env.isTestMode ? ':memory:' : dbPath(genesisBlockHash)
 
   const logging: boolean | ('query' | 'schema' | 'error' | 'warn' | 'info' | 'log' | 'migration')[] = ['warn', 'error']
   // (env.isDevMode) ? ['warn', 'error', 'log', 'info', 'schema', 'migration'] : ['warn', 'error']
 
   return {
-    ...connectionOptions,
     type: 'sqlite',
     database,
     entities: [
@@ -127,26 +125,38 @@ const connectOptions = async (genesisBlockHash: string): Promise<SqliteConnectio
     ],
     logger: 'simple-console',
     logging,
+    synchronize: true,
     maxQueryExecutionTime: 30,
   }
 }
 
+let dataSource: DataSource | null = null
+
 export const initConnection = async (genesisBlockHash: string) => {
   // try to close connection, if not exist, will throw ConnectionNotFoundError when call getConnection()
   try {
-    await getConnection().close()
+    await dataSource?.destroy()
   } catch (err) {
+    dataSource = null
     // do nothing
   }
-  const connectionOptions = await connectOptions(genesisBlockHash)
+  const connectionOptions = getConnectionOptions(genesisBlockHash)
+  dataSource = new DataSource(connectionOptions)
 
   try {
-    await createConnection(connectionOptions)
-    await getConnection().manager.query(`PRAGMA busy_timeout = 3000;`)
-    await getConnection().manager.query(`PRAGMA temp_store = MEMORY;`)
+    await dataSource.initialize()
+    await dataSource.manager.query(`PRAGMA busy_timeout = 3000;`)
+    await dataSource.manager.query(`PRAGMA temp_store = MEMORY;`)
   } catch (err) {
     logger.error(err.message)
   }
+}
+
+export const getConnection = () => {
+  if (!dataSource) {
+    throw new Error('Should be initialize before using datasource')
+  }
+  return dataSource
 }
 
 export default initConnection

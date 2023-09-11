@@ -1,8 +1,9 @@
-import { Equal, getConnection, In, Not } from 'typeorm'
+import { Equal, In, Not } from 'typeorm'
 import { computeScriptHash as scriptToHash } from '@ckb-lumos/base/lib/utils'
 import { HexString } from '@ckb-lumos/base'
 import SyncProgress, { SyncAddressType } from '../database/chain/entities/sync-progress'
 import WalletService from './wallets'
+import { getConnection } from '../database/chain/ormconfig'
 
 export default class SyncProgressService {
   static async resetSyncProgress(
@@ -112,7 +113,7 @@ export default class SyncProgressService {
   }
 
   static async getOtherTypeSyncProgress() {
-    const items = await getConnection().getRepository(SyncProgress).find({
+    const items = await getConnection().getRepository(SyncProgress).findBy({
       addressType: SyncAddressType.Multisig,
     })
     return items.reduce<Record<string, number>>((pre, cur) => ({ ...pre, [cur.hash]: cur.blockStartNumber }), {})

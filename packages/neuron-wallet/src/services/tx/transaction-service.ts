@@ -1,4 +1,3 @@
-import { getConnection } from 'typeorm'
 import CKB from '@nervosnetwork/ckb-sdk-core'
 import TransactionEntity from '../../database/chain/entities/transaction'
 import OutputEntity from '../../database/chain/entities/output'
@@ -20,6 +19,7 @@ import RpcService from '../rpc-service'
 import NetworksService from '../networks'
 import Script from '../../models/chain/script'
 import Input from '../../models/chain/input'
+import { getConnection } from '../../database/chain/ormconfig'
 
 export interface TransactionsByAddressesParam {
   pageNo: number

@@ -1,4 +1,3 @@
-import { getConnection } from 'typeorm'
 import { scriptToAddress } from '../../utils/scriptAndAddress'
 import OutputEntity from '../../database/chain/entities/output'
 import NetworksService from '../../services/networks'
@@ -6,6 +5,7 @@ import Output from '../../models/chain/output'
 import OutPoint from '../../models/chain/out-point'
 import Transaction from '../../models/chain/transaction'
 import SystemScriptInfo from '../../models/system-script-info'
+import { getConnection } from '../../database/chain/ormconfig'
 
 export interface AnyoneCanPayInfo {
   tokenID: string
@@ -90,7 +90,7 @@ export default class TxAddressFinder {
     let shouldSync = false
     for (const input of inputs) {
       const outPoint: OutPoint = input.previousOutput!
-      const output = await getConnection().getRepository(OutputEntity).findOne({
+      const output = await getConnection().getRepository(OutputEntity).findOneBy({
         outPointTxHash: outPoint.txHash,
         outPointIndex: outPoint.index,
       })

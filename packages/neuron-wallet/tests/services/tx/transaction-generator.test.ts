@@ -1,7 +1,6 @@
 import { when } from 'jest-when'
-import { getConnection } from 'typeorm'
 import { bytes } from '@ckb-lumos/codec'
-import { initConnection } from '../../../src/database/chain/ormconfig'
+import { getConnection } from '../../../src/database/chain/ormconfig'
 import OutputEntity from '../../../src/database/chain/entities/output'
 import InputEntity from '../../../src/database/chain/entities/input'
 import TransactionEntity from '../../../src/database/chain/entities/transaction'
@@ -88,10 +87,11 @@ import AssetAccount from '../../../src/models/asset-account'
 import MultisigConfigModel from '../../../src/models/multisig-config'
 import MultisigOutput from '../../../src/database/chain/entities/multisig-output'
 import { LumosCell } from '../../../src/block-sync-renderer/sync/connector'
+import { closeConnection, initConnection } from '../../setupAndTeardown'
 
 describe('TransactionGenerator', () => {
   beforeAll(async () => {
-    await initConnection('0x1234')
+    await initConnection()
 
     // @ts-ignore: Private method
     SystemScriptInfo.getInstance().secpOutPointInfo = new Map<string, OutPoint>([
@@ -124,7 +124,7 @@ describe('TransactionGenerator', () => {
   })
 
   afterAll(async () => {
-    await getConnection().close()
+    await closeConnection()
   })
 
   const generateCell = (

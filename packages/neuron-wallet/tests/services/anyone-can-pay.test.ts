@@ -1,4 +1,3 @@
-import { getConnection } from 'typeorm'
 import AnyoneCanPayService from '../../src/services/anyone-can-pay'
 import AssetAccountEntity from '../../src/database/chain/entities/asset-account'
 import AssetAccount from '../../src/models/asset-account'
@@ -7,6 +6,7 @@ import { AcpSendSameAccountError, TargetLockError, TargetOutputNotFoundError } f
 import AssetAccountInfo from '../../src/models/asset-account-info'
 import SystemScriptInfo from '../../src/models/system-script-info'
 import { MIN_SUDT_CAPACITY } from '../../src/utils/const'
+import { getConnection } from '../../src/database/chain/ormconfig'
 
 const addressParseMock = jest.fn()
 jest.mock('../../src/models/address-parser', () => ({

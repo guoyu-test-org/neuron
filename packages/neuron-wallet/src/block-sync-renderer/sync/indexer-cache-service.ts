@@ -1,4 +1,3 @@
-import { getConnection } from 'typeorm'
 import { queue } from 'async'
 import AddressMeta from '../../database/address/meta'
 import IndexerTxHashCache from '../../database/chain/entities/indexer-tx-hash-cache'
@@ -6,6 +5,7 @@ import RpcService from '../../services/rpc-service'
 import TransactionWithStatus from '../../models/chain/transaction-with-status'
 import SyncInfoEntity from '../../database/chain/entities/sync-info'
 import { TransactionCollector, CellCollector, Indexer as CkbIndexer } from '@ckb-lumos/ckb-indexer'
+import { getConnection } from '../../database/chain/ormconfig'
 
 export default class IndexerCacheService {
   private addressMetas: AddressMeta[]
@@ -152,7 +152,7 @@ export default class IndexerCacheService {
       this.#cacheBlockNumberEntity =
         (await getConnection()
           .getRepository(SyncInfoEntity)
-          .findOne({ name: SyncInfoEntity.getLastCachedKey(this.walletId) })) ??
+          .findOneBy({ name: SyncInfoEntity.getLastCachedKey(this.walletId) })) ??
         SyncInfoEntity.fromObject({
           name: SyncInfoEntity.getLastCachedKey(this.walletId),
           value: '0x0',

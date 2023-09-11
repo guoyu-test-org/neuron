@@ -1,4 +1,4 @@
-import { getConnection } from 'typeorm'
+import { getConnection } from '../../database/chain/ormconfig'
 import TxDescription from '../../database/chain/entities/tx-description'
 
 const getEntity = async (walletId: string, txHash: string) => {

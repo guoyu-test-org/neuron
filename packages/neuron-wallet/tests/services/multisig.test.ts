@@ -1,5 +1,4 @@
-import { getConnection } from 'typeorm'
-import { initConnection } from '../../src/database/chain/ormconfig'
+import { getConnection } from '../../src/database/chain/ormconfig'
 import MultisigConfig from '../../src/database/chain/entities/multisig-config'
 import MultisigConfigModel from '../../src/models/multisig-config'
 import MultisigService from '../../src/services/multisig'
@@ -9,6 +8,7 @@ import { keyInfos } from '../setupAndTeardown/public-key-info.fixture'
 import Multisig from '../../src/models/multisig'
 import SystemScriptInfo from '../../src/models/system-script-info'
 import { computeScriptHash as scriptToHash } from '@ckb-lumos/base/lib/utils'
+import { closeConnection, initConnection } from '../setupAndTeardown'
 
 const [alice, bob, charlie] = keyInfos
 
@@ -62,11 +62,11 @@ describe('multisig service', () => {
   const multisigOutput = MultisigOutput.fromIndexer(defaultOutput)
 
   beforeAll(async () => {
-    await initConnection('0x1234')
+    await initConnection()
   })
 
   afterAll(async () => {
-    await getConnection().close()
+    await closeConnection()
   })
 
   beforeEach(async () => {

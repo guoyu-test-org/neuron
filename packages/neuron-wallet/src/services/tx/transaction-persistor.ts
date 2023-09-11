@@ -1,4 +1,4 @@
-import { getConnection, QueryRunner } from 'typeorm'
+import { QueryRunner } from 'typeorm'
 import InputEntity from '../../database/chain/entities/input'
 import OutputEntity from '../../database/chain/entities/output'
 import TransactionEntity from '../../database/chain/entities/transaction'
@@ -11,6 +11,7 @@ import Transaction, { TransactionStatus } from '../../models/chain/transaction'
 import Input from '../../models/chain/input'
 import TxLockEntity from '../../database/chain/entities/tx-lock'
 import { CHEQUE_ARGS_LENGTH, DEFAULT_ARGS_LENGTH } from '../../utils/const'
+import { getConnection } from '../../database/chain/ormconfig'
 
 export enum TxSaveType {
   Sent = 'sent',
@@ -22,9 +23,7 @@ export class TransactionPersistor {
   // 1. If the tx is not persisted before sending, output = sent, input = pending
   // 2. If the tx is already persisted before sending, do nothing
   private static saveWithSent = async (transaction: Transaction): Promise<TransactionEntity> => {
-    const txEntity: TransactionEntity | undefined = await getConnection()
-      .getRepository(TransactionEntity)
-      .findOne(transaction.hash)
+    const txEntity = await getConnection().getRepository(TransactionEntity).findOneBy({ hash: transaction.hash })
 
     if (txEntity && txEntity.status === TransactionStatus.Failed) {
       // delete and create a new one (OR just update all status)
@@ -49,9 +48,9 @@ export class TransactionPersistor {
     lockArgsSetNeedsDetail?: Set<string>
   ): Promise<TransactionEntity> => {
     const connection = getConnection()
-    const txEntity: TransactionEntity | undefined = await connection
+    const txEntity: TransactionEntity | null = await connection
       .getRepository(TransactionEntity)
-      .findOne(transaction.hash)
+      .findOneBy({ hash: transaction.hash })
 
     // update multiSignBlake160 / input.type / input.data / output.data
     if (txEntity) {
@@ -149,7 +148,7 @@ export class TransactionPersistor {
           const outPoint: OutPoint | null = input.previousOutput()
 
           if (outPoint) {
-            const outputEntity: OutputEntity | undefined = await connection.getRepository(OutputEntity).findOne({
+            const outputEntity = await connection.getRepository(OutputEntity).findOneBy({
               outPointTxHash: outPoint.txHash,
               outPointIndex: outPoint.index,
             })
@@ -255,7 +254,7 @@ export class TransactionPersistor {
       inputs.push(input)
 
       if (outPoint) {
-        const previousOutput: OutputEntity | undefined = await connection.getRepository(OutputEntity).findOne({
+        const previousOutput = await connection.getRepository(OutputEntity).findOneBy({
           outPointTxHash: outPoint.txHash,
           outPointIndex: outPoint.index,
         })

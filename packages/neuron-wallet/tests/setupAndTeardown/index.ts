@@ -1,5 +1,4 @@
-import initDB from '../../src/database/chain/ormconfig'
-import { getConnection } from 'typeorm'
+import initDB, { getConnection } from '../../src/database/chain/ormconfig'
 import { TransactionPersistor } from '../../src/services/tx'
 import AssetAccount from '../../src/models/asset-account'
 import OutputEntity from '../../src/database/chain/entities/output'
@@ -10,7 +9,7 @@ export const initConnection = () => {
 }
 
 export const closeConnection = () => {
-  return getConnection().close()
+  return getConnection().destroy()
 }
 
 export const saveTransactions = async (txs: any) => {

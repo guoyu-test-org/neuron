@@ -1,6 +1,5 @@
 import { AccountExtendedPublicKey } from '../../src/models/keys/key'
-import initConnection from '../../src/database/chain/ormconfig'
-import { getConnection } from 'typeorm'
+import { getConnection } from '../../src/database/chain/ormconfig'
 import SystemScriptInfo from '../../src/models/system-script-info'
 import { OutputStatus } from '../../src/models/chain/output'
 import OutputEntity from '../../src/database/chain/entities/output'
@@ -11,6 +10,7 @@ import { TransactionStatus } from '../../src/models/chain/transaction'
 import AddressParser from '../../src/models/address-parser'
 import { when } from 'jest-when'
 import HdPublicKeyInfo from '../../src/database/chain/entities/hd-public-key-info'
+import { closeConnection, initConnection } from '../setupAndTeardown'
 
 const walletId = '1'
 const extendedKey = new AccountExtendedPublicKey(
@@ -120,11 +120,11 @@ describe('integration tests for AddressService', () => {
     let generatedAddresses: Address[]
 
     beforeAll(async () => {
-      await initConnection('')
+      await initConnection()
     })
 
     afterAll(async () => {
-      await getConnection().close()
+      await closeConnection()
     })
 
     beforeEach(async () => {
@@ -410,7 +410,7 @@ describe('integration tests for AddressService', () => {
     describe('#nextUnusedAddress', () => {
       const receivingAddressCount = 2
       const changeAddressCount = 2
-      let publicKeysToUse = []
+      let publicKeysToUse: string[] = []
       describe('when there are unused receiving addresses', () => {
         beforeEach(async () => {
           await AddressService.generateAndSaveForExtendedKey(
@@ -474,7 +474,7 @@ describe('integration tests for AddressService', () => {
     })
 
     describe('#allUnusedReceivingAddresses', () => {
-      let publicKeysToUse = []
+      let publicKeysToUse: string[] = []
       const receivingAddressCount = 4
       const changeAddressCount = 4
       describe('when there are unused receiving addresses', () => {
@@ -519,7 +519,7 @@ describe('integration tests for AddressService', () => {
     })
 
     describe('#nextUnusedChangeAddress', () => {
-      let publicKeysToUse = []
+      let publicKeysToUse: string[] = []
       const receivingAddressCount = 4
       const changeAddressCount = 4
       beforeEach(async () => {

@@ -1,6 +1,5 @@
 import Keystore from '../../src/models/keys/keystore'
-import initConnection from '../../src/database/chain/ormconfig'
-import { getConnection } from 'typeorm'
+import { getConnection } from '../../src/database/chain/ormconfig'
 import { when } from 'jest-when'
 import { WalletFunctionNotSupported } from '../../src/exceptions/wallet'
 import { AddressType } from '../../src/models/keys/address'
@@ -34,6 +33,7 @@ jest.doMock('../../src/services/addresses', () => {
 import WalletService, { WalletProperties, Wallet } from '../../src/services/wallets'
 import { AccountExtendedPublicKey } from '../../src/models/keys/key'
 import HdPublicKeyInfo from '../../src/database/chain/entities/hd-public-key-info'
+import { closeConnection, initConnection } from '../setupAndTeardown'
 
 const resetMocks = () => {
   stubbedDeletedByWalletIdFn.mockReset()
@@ -56,11 +56,11 @@ describe('wallet service', () => {
   const fakeChainCode = 'codecodecodecodecodecodecodecodecodecodecodecodecodecodecodecode'
 
   beforeAll(async () => {
-    await initConnection('')
+    await initConnection()
   })
 
   afterAll(async () => {
-    await getConnection().close()
+    await closeConnection()
   })
 
   beforeEach(async () => {

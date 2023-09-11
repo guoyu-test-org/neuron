@@ -1,7 +1,6 @@
 import AssetAccountInfo from '../models/asset-account-info'
 import AddressParser from '../models/address-parser'
 import { TransactionGenerator } from './tx'
-import { getConnection } from 'typeorm'
 import Output from '../models/chain/output'
 import LiveCell from '../models/chain/live-cell'
 import Transaction from '../models/chain/transaction'
@@ -21,6 +20,7 @@ import CellsService from './cells'
 import { MIN_SUDT_CAPACITY } from '../utils/const'
 import NetworksService from './networks'
 import { NetworkType } from '../models/network'
+import { getConnection } from '../database/chain/ormconfig'
 
 export default class AnyoneCanPayService {
   public static async generateAnyoneCanPayTx(

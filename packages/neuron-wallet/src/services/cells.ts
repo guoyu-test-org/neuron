@@ -1,4 +1,4 @@
-import { getConnection, In } from 'typeorm'
+import { In } from 'typeorm'
 import { computeScriptHash as scriptToHash } from '@ckb-lumos/base/lib/utils'
 import { scriptToAddress, addressToScript } from '../utils/scriptAndAddress'
 import {
@@ -31,6 +31,7 @@ import NFT from '../models/nft'
 import MultisigConfigModel from '../models/multisig-config'
 import MultisigOutput from '../database/chain/entities/multisig-output'
 import { MIN_CELL_CAPACITY } from '../utils/const'
+import { getConnection } from '../database/chain/ormconfig'
 
 export interface PaginationResult<T = any> {
   totalCount: number
@@ -419,7 +420,7 @@ export default class CellsService {
   }
 
   public static getLiveCell = async (outPoint: OutPoint): Promise<Cell | undefined> => {
-    const cellEntity: OutputEntity | undefined = await CellsService.getLiveCellEntity(outPoint)
+    const cellEntity = await CellsService.getLiveCellEntity(outPoint)
 
     if (!cellEntity) {
       return undefined
@@ -428,8 +429,8 @@ export default class CellsService {
     return cellEntity.toModel()
   }
 
-  private static getLiveCellEntity = async (outPoint: OutPoint): Promise<OutputEntity | undefined> => {
-    const cellEntity: OutputEntity | undefined = await getConnection().getRepository(OutputEntity).findOne({
+  private static getLiveCellEntity = async (outPoint: OutPoint): Promise<OutputEntity | null> => {
+    const cellEntity = await getConnection().getRepository(OutputEntity).findOneBy({
       outPointTxHash: outPoint.txHash,
       outPointIndex: outPoint.index,
       status: 'live',

@@ -6,8 +6,8 @@ import transactions from '../../setupAndTeardown/transactions.fixture'
 import { keyInfos } from '../../setupAndTeardown/public-key-info.fixture'
 import i18n from '../../../src/locales/i18n'
 import exportHistory from '../../../src/utils/export-history'
-import { getConnection } from 'typeorm'
 import HdPublicKeyInfo from '../../../src/database/chain/entities/hd-public-key-info'
+import { getConnection } from '../../../src/database/chain/ormconfig'
 
 describe('Test exporting history', () => {
   const WALLET_ID = 'w1'

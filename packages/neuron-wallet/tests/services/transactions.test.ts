@@ -1,8 +1,8 @@
-import { getConnection } from 'typeorm'
-import { initConnection } from '../../src/database/chain/ormconfig'
+import { getConnection } from '../../src/database/chain/ormconfig'
 import TransactionsService, { SearchType } from '../../src/services/tx/transaction-service'
 import TransactionEntity from '../../src/database/chain/entities/transaction'
 import { TransactionStatus } from '../../src/models/chain/transaction'
+import { closeConnection, initConnection } from '../setupAndTeardown'
 
 const generateTx = (hash: string, timestamp: string) => {
   const tx = new TransactionEntity()
@@ -65,11 +65,11 @@ describe('transactions service', () => {
     let hashes: string[]
 
     beforeAll(async () => {
-      await initConnection('0x1234')
+      await initConnection()
     })
 
     afterAll(async () => {
-      await getConnection().close()
+      await closeConnection()
     })
 
     beforeEach(async () => {

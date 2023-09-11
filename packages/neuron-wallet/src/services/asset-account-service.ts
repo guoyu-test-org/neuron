@@ -1,4 +1,4 @@
-import { getConnection, In, Not } from 'typeorm'
+import { In, IsNull, Not } from 'typeorm'
 import BufferUtils from '../utils/buffer'
 import OutputEntity from '../database/chain/entities/output'
 import Transaction, { TransactionStatus } from '../models/chain/transaction'
@@ -16,24 +16,19 @@ import OutPoint from '../models/chain/out-point'
 import SystemScriptInfo from '../models/system-script-info'
 import Input from '../models/chain/input'
 import { MIN_CELL_CAPACITY } from '../utils/const'
+import { getConnection } from '../database/chain/ormconfig'
 
 export default class AssetAccountService {
   private static async getACPCells(publicKeyHash: string, tokenId: string = 'CKBytes') {
     const assetAccountInfo = new AssetAccountInfo()
     const anyoneCanPayLockHash = assetAccountInfo.generateAnyoneCanPayScript(publicKeyHash).computeHash()
-    let typeHash = null
-    if (tokenId !== 'CKBytes') {
-      typeHash = assetAccountInfo.generateSudtScript(tokenId).computeHash()
-    }
     const outputs = await getConnection()
       .getRepository(OutputEntity)
-      .createQueryBuilder('output')
-      .where({
+      .findBy({
         status: In([OutputStatus.Live, OutputStatus.Sent]),
         lockHash: anyoneCanPayLockHash,
-        typeHash,
+        typeHash: tokenId !== 'CKBytes' ? assetAccountInfo.generateSudtScript(tokenId).computeHash() : IsNull(),
       })
-      .getMany()
 
     return outputs
   }

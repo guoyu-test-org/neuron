@@ -1,7 +1,6 @@
-import { getConnection } from 'typeorm'
 import { scriptToAddress } from '../../src/utils/scriptAndAddress'
 import { bytes } from '@ckb-lumos/codec'
-import { initConnection } from '../../src/database/chain/ormconfig'
+import { initConnection, getConnection } from '../../src/database/chain/ormconfig'
 import OutputEntity from '../../src/database/chain/entities/output'
 import { OutputStatus } from '../../src/models/chain/output'
 import CellsService, { CustomizedLock, CustomizedType } from '../../src/services/cells'

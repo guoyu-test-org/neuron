@@ -1,6 +1,6 @@
 import { when } from 'jest-when'
-import { getConnection } from 'typeorm'
-import { initConnection } from '../../src/database/chain/ormconfig'
+import { getConnection } from '../../src/database/chain/ormconfig'
+import { initConnection, closeConnection } from '../setupAndTeardown'
 import AddressMeta from '../../src/database/address/meta'
 import { AddressType } from '../../src/models/keys/address'
 import { AddressVersion } from '../../src/models/address'
@@ -129,11 +129,11 @@ const fakeTx3 = {
 
 describe('indexer cache service', () => {
   beforeAll(async () => {
-    await initConnection('')
+    await initConnection()
   })
 
   afterAll(async () => {
-    await getConnection().close()
+    await closeConnection()
   })
 
   beforeEach(async () => {
@@ -275,21 +275,27 @@ describe('indexer cache service', () => {
 
         stubbedCellCollectorConstructor.mockReset()
         when(stubbedCellCollectorConstructor)
-          .calledWith(expect.anything(), expect.objectContaining({
-            lock: {
-              ...formattedSingleMultiSignLockScript,
-              args: formattedSingleMultiSignLockScript.args.slice(0, 42),
-            },
-            argsLen: 28,
-          }))
+          .calledWith(
+            expect.anything(),
+            expect.objectContaining({
+              lock: {
+                ...formattedSingleMultiSignLockScript,
+                args: formattedSingleMultiSignLockScript.args.slice(0, 42),
+              },
+              argsLen: 28,
+            })
+          )
           .mockReturnValue(fakeCollectorObj)
-          .calledWith(expect.anything(), expect.objectContaining({
-            lock: {
-              ...formattedChequeLockScript,
-              args: formattedChequeLockScript.args.slice(0, 42),
-            },
-            argsLen: 40,
-          }))
+          .calledWith(
+            expect.anything(),
+            expect.objectContaining({
+              lock: {
+                ...formattedChequeLockScript,
+                args: formattedChequeLockScript.args.slice(0, 42),
+              },
+              argsLen: 40,
+            })
+          )
           .mockReturnValue(fakeCollectorObj)
 
         newTxHashes = await indexerCacheService.upsertTxHashes()

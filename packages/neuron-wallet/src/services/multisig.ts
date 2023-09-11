@@ -1,4 +1,4 @@
-import { getConnection, In, Not } from 'typeorm'
+import { In, Not } from 'typeorm'
 import MultisigConfig from '../database/chain/entities/multisig-config'
 import MultisigOutput from '../database/chain/entities/multisig-output'
 import { MultisigConfigNotExistError, MultisigConfigExistError } from '../exceptions/multisig'
@@ -13,6 +13,7 @@ import SyncProgress, { SyncAddressType } from '../database/chain/entities/sync-p
 import { NetworkType } from '../models/network'
 import WalletService from './wallets'
 import logger from '../utils/logger'
+import { getConnection } from '../database/chain/ormconfig'
 
 const max64Int = '0x' + 'f'.repeat(16)
 export default class MultisigService {

@@ -1,11 +1,11 @@
-import { getConnection } from 'typeorm'
-import { initConnection } from '../../src/database/chain/ormconfig'
+import { getConnection } from '../../src/database/chain/ormconfig'
 import mockedTransactions from '../setupAndTeardown/transactions.fixture'
 import { TransactionStatus } from '../../src/models/chain/transaction'
 import TransactionPersistor from '../../src/services/tx/transaction-persistor'
 import { OutputStatus } from '../../src/models/chain/output'
 import TxStatus, { TxStatusType } from '../../src/models/chain/tx-status'
 import TransactionEntity from '../../src/database/chain/entities/transaction'
+import { closeConnection, initConnection } from '../setupAndTeardown'
 
 const stubbedRPCServiceConstructor = jest.fn()
 const stubbedGetTransactionFn = jest.fn()
@@ -48,11 +48,11 @@ const { register } = require('../../src/block-sync-renderer/tx-status-listener')
 
 describe('', () => {
   beforeAll(async () => {
-    await initConnection('')
+    await initConnection()
   })
 
   afterAll(async () => {
-    await getConnection().close()
+    await closeConnection()
   })
 
   beforeEach(async () => {
