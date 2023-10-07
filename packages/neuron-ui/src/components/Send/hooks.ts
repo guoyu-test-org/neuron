@@ -49,6 +49,7 @@ const updateTransactionWith =
     isMainnet,
     dispatch,
     t,
+    consumeOutPoints,
   }: {
     walletID: string
     price: string
@@ -59,6 +60,7 @@ const updateTransactionWith =
     isMainnet: boolean
     dispatch: StateDispatch
     t: TFunction
+    consumeOutPoints?: CKBComponents.OutPoint[]
   }) => {
     const { value: type } = Object.getOwnPropertyDescriptor(generator, 'type')!
     if (items.length === 1 && items[0].amount === undefined) {
@@ -81,6 +83,7 @@ const updateTransactionWith =
           date: item.date,
         })),
         feeRate: price,
+        consumeOutPoints,
       }
       return generator(realParams)
         .then((res: any) => {
@@ -158,7 +161,8 @@ const useOnTransactionChange = (
   isSendMax: boolean,
   setTotalAmount: (val: string) => void,
   setErrorMessage: (val: string) => void,
-  t: TFunction
+  t: TFunction,
+  consumeOutPoints?: CKBComponents.OutPoint[]
 ) => {
   useEffect(() => {
     clearTimeout(generateTxTimer)
@@ -181,9 +185,10 @@ const useOnTransactionChange = (
         isMainnet,
         dispatch,
         t,
+        consumeOutPoints,
       })
     }, 300)
-  }, [walletID, items, price, isSendMax, dispatch, setTotalAmount, setErrorMessage, t, isMainnet])
+  }, [walletID, items, price, isSendMax, dispatch, setTotalAmount, setErrorMessage, t, isMainnet, consumeOutPoints])
 }
 
 const useOnSubmit = (items: Readonly<State.Output[]>, isMainnet: boolean, dispatch: StateDispatch) =>
@@ -322,7 +327,8 @@ export const useInitialize = (
   sending: boolean,
   isMainnet: boolean,
   dispatch: React.Dispatch<any>,
-  t: TFunction
+  t: TFunction,
+  consumeOutPoints?: CKBComponents.OutPoint[]
 ) => {
   const fee = useMemo(() => calculateFee(generatedTx), [generatedTx])
 
@@ -366,12 +372,13 @@ export const useInitialize = (
       isMainnet,
       dispatch,
       t,
+      consumeOutPoints,
     }).then(tx => {
       if (!tx) {
         updateIsSendMax(false)
       }
     })
-  }, [walletID, updateTransactionOutput, price, items, dispatch, t, isMainnet, updateIsSendMax])
+  }, [walletID, updateTransactionOutput, price, items, dispatch, t, isMainnet, updateIsSendMax, consumeOutPoints])
 
   const onSendMaxClick = useCallback(() => {
     if (!isSendMax) {

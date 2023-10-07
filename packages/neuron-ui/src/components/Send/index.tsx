@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { List } from 'office-ui-fabric-react'
-import { useState as useGlobalState, useDispatch, appState } from 'states'
+import { useState as useGlobalState, useDispatch, appState, AppActions } from 'states'
 import SendMetaInfo from 'components/SendMetaInfo'
 import SendFieldset from 'components/SendFieldset'
 import PageContainer from 'components/PageContainer'
@@ -57,6 +57,7 @@ const Send = () => {
     wallet: { id: walletID = '', balance = '', device },
     chain: { networkID, connectionStatus },
     settings: { networks = [] },
+    consumeOutPoints,
   } = useGlobalState()
   const dispatch = useDispatch()
   const { t } = useTranslation()
@@ -81,7 +82,17 @@ const Send = () => {
     setErrorMessage,
     isSendMax,
     onSendMaxClick: handleSendMaxClick,
-  } = useInitialize(walletID, send.outputs, send.generatedTx, send.price, sending, isMainnet, dispatch, t)
+  } = useInitialize(
+    walletID,
+    send.outputs,
+    send.generatedTx,
+    send.price,
+    sending,
+    isMainnet,
+    dispatch,
+    t,
+    consumeOutPoints
+  )
 
   const [locktimeIndex, setLocktimeIndex] = useState<number>(-1)
 
@@ -116,7 +127,8 @@ const Send = () => {
     isSendMax,
     setTotalAmount,
     setErrorMessage,
-    t
+    t,
+    consumeOutPoints
   )
 
   let errorMessageUnderTotal = errorMessage
@@ -152,6 +164,14 @@ const Send = () => {
     }
     return false
   })()
+
+  useEffect(() => {
+    return () => {
+      dispatch({
+        type: AppActions.UpdateConsumeOutPoints,
+      })
+    }
+  }, [])
 
   return (
     <PageContainer head={<SendHeader balance={balance} />}>

@@ -151,6 +151,10 @@ type Action =
   | 'get-hold-sudt-cell-capacity'
   | 'start-migrate'
   | 'get-sync-progress-by-addresses'
+  | 'get-live-cells'
+  | 'update-live-cell-local-info'
+  | 'get-locked-balance'
+  | 'update-live-cells-lock-status'
 
 export const remoteApi =
   <P = any, R = any>(action: Action) =>

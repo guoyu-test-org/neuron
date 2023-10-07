@@ -1,4 +1,4 @@
-import { getConnection, In } from 'typeorm'
+import { Brackets, getConnection, In } from 'typeorm'
 import { computeScriptHash as scriptToHash } from '@ckb-lumos/base/lib/utils'
 import { scriptToAddress, addressToScript } from '../utils/scriptAndAddress'
 import {
@@ -30,7 +30,10 @@ import AssetAccountInfo from '../models/asset-account-info'
 import NFT from '../models/nft'
 import MultisigConfigModel from '../models/multisig-config'
 import MultisigOutput from '../database/chain/entities/multisig-output'
-import { MIN_CELL_CAPACITY } from '../utils/const'
+import { LOCKTIME_ARGS_LENGTH, MIN_CELL_CAPACITY } from '../utils/const'
+import HdPublicKeyInfo from '../database/chain/entities/hd-public-key-info'
+import CellLocalInfoService from './cell-local-info'
+import { outPointTransformer } from '../database/chain/entities/cell-local-info'
 
 export interface PaginationResult<T = any> {
   totalCount: number
@@ -49,6 +52,24 @@ export enum CustomizedType {
   NFTIssuer = 'NFTIssuer',
   SUDT = 'SUDT',
   Unknown = 'Unknown',
+}
+
+export enum LockScriptType {
+  SECP256K1 = 'SECP256K1',
+  ANYONE_CAN_PAY = 'ANYONE_CAN_PAY',
+  MULTI_LOCK_TIME = 'MULTI_LOCK_TIME',
+  MULTISIG = 'MULTISIG',
+  Cheque = CustomizedLock.Cheque,
+  Unknown = CustomizedType.Unknown,
+}
+
+export enum TypeScriptType {
+  DAO = 'DAO',
+  NFT = CustomizedType.NFT,
+  NFTClass = CustomizedType.NFTClass,
+  NFTIssuer = CustomizedType.NFTIssuer,
+  SUDT = CustomizedType.SUDT,
+  Unknown = CustomizedType.Unknown,
 }
 
 export default class CellsService {
@@ -263,7 +284,6 @@ export default class CellsService {
     const nftIssuerCodehash = assetAccountInfo.getNftIssuerInfo().codeHash
     const nftClassCodehash = assetAccountInfo.getNftClassInfo().codeHash
     const nftCodehash = assetAccountInfo.getNftInfo().codeHash
-    const acpCodehash = assetAccountInfo.getAcpCodeHash()
     const sudtCodehash = assetAccountInfo.getSudtCodeHash()
     const secp256k1LockHashes = [...blake160Hashes].map(blake160 =>
       SystemScriptInfo.generateSecpScript(blake160).computeHash()
@@ -338,7 +358,7 @@ export default class CellsService {
         )
       }
 
-      if (o.hasData && o.typeCodeHash === sudtCodehash && o.lockCodeHash === acpCodehash) {
+      if (o.hasData && o.typeCodeHash === sudtCodehash && o.lockCodeHash === assetAccountInfo.anyoneCanPayCodeHash) {
         return false
       }
 
@@ -438,6 +458,56 @@ export default class CellsService {
     return cellEntity
   }
 
+  public static getLiveCells = async (walletId: string) => {
+    const hdPublicKeyInfos = await getConnection()
+      .getRepository(HdPublicKeyInfo)
+      .createQueryBuilder()
+      .where({ walletId })
+      .getMany()
+    const blake160s = hdPublicKeyInfos.map(v => v.publicKeyInBlake160)
+    const multisigArgs = hdPublicKeyInfos.map(v => Multisig.hash([v.publicKeyInBlake160]))
+    // find all outputs except cheque
+    const outputs = await getConnection()
+      .getRepository(OutputEntity)
+      .createQueryBuilder('output')
+      .leftJoinAndSelect('output.transaction', 'tx')
+      .where({
+        status: In([OutputStatus.Live, OutputStatus.Sent]),
+      })
+      .andWhere(
+        new Brackets(qb => {
+          qb.where({ lockArgs: In(blake160s) }).orWhere({ multiSignBlake160: In(multisigArgs) })
+        })
+      )
+      .getMany()
+    const currentWalletCheque = await CellsService.getChequeLiveCells(blake160s)
+    return outputs.concat(currentWalletCheque).map(v => v.toModel())
+  }
+
+  private static getChequeLiveCells = async (blake160s: string[]) => {
+    const assetAccountInfo = new AssetAccountInfo()
+    const chequeLockCodeHash = assetAccountInfo.getChequeInfo().codeHash
+    // find cheque
+    const allChequeOutputs = await getConnection()
+      .getRepository(OutputEntity)
+      .createQueryBuilder('output')
+      .leftJoinAndSelect('output.transaction', 'tx')
+      .where({
+        status: In([OutputStatus.Live, OutputStatus.Sent]),
+        lockCodeHash: chequeLockCodeHash,
+      })
+      .getMany()
+    const secp256k1LockHashes = blake160s.map(blake160 => SystemScriptInfo.generateSecpScript(blake160).computeHash())
+    return allChequeOutputs.filter(v => {
+      const receiverLockHash = v.lockArgs.slice(0, 42)
+      const senderLockHash = v.lockArgs.slice(42)
+      return (
+        secp256k1LockHashes.find(hash => hash.includes(receiverLockHash)) ||
+        secp256k1LockHashes.find(hash => hash.includes(senderLockHash))
+      )
+    })
+  }
+
   private static getLiveOrSentCellByWalletId = async (
     walletId: string,
     lockClass: {
@@ -445,7 +515,7 @@ export default class CellsService {
       hashType: ScriptHashType
     }
   ) => {
-    return await getConnection()
+    const outputs = await getConnection()
       .getRepository(OutputEntity)
       .createQueryBuilder('output')
       .where(
@@ -469,6 +539,23 @@ export default class CellsService {
         }
       )
       .getMany()
+    const lockedOutPointSet = await CellLocalInfoService.getLockedOutPoints(outputs.map(v => v.outPoint()))
+    return outputs.filter(v => v.outPoint && !lockedOutPointSet.has(outPointTransformer.to(v.outPoint())))
+  }
+
+  private static getLiveOrSendCellByOutPoints = async (consumeOutPoints: CKBComponents.OutPoint[]) => {
+    const outputs = await getConnection()
+      .getRepository(OutputEntity)
+      .createQueryBuilder('output')
+      .where({
+        status: In([OutputStatus.Live, OutputStatus.Sent]),
+        outPointTxHash: In(consumeOutPoints.map(v => v.txHash)),
+      })
+      .getMany()
+    return outputs.filter(
+      v =>
+        !!consumeOutPoints.find(outPoint => outPoint.txHash === v.outPointTxHash && outPoint.index === v.outPointIndex)
+    )
   }
 
   private static getLiveOrSentCellByLockArgsMultisigOutput = async (lockClass: {
@@ -519,7 +606,8 @@ export default class CellsService {
       codeHash: string
       hashType: ScriptHashType
     } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
-    multisigConfigs: MultisigConfigModel[] = []
+    multisigConfigs: MultisigConfigModel[] = [],
+    consumeOutPoints?: CKBComponents.OutPoint[]
   ): Promise<{
     inputs: Input[]
     capacities: string
@@ -542,7 +630,9 @@ export default class CellsService {
 
     // only live cells, skip which has data or type
     const cellEntities: (OutputEntity | MultisigOutput)[] = await (walletId
-      ? CellsService.getLiveOrSentCellByWalletId(walletId, lockClass)
+      ? consumeOutPoints?.length
+        ? CellsService.getLiveOrSendCellByOutPoints(consumeOutPoints)
+        : CellsService.getLiveOrSentCellByWalletId(walletId, lockClass)
       : CellsService.getLiveOrSentCellByLockArgsMultisigOutput(lockClass))
 
     const liveCells = cellEntities.filter(c => c.status === OutputStatus.Live)
@@ -674,15 +764,21 @@ export default class CellsService {
       codeHash: string
       hashType: ScriptHashType
       args?: string
-    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type }
+    } = { codeHash: SystemScriptInfo.SECP_CODE_HASH, hashType: ScriptHashType.Type },
+    consumeOutPoints?: CKBComponents.OutPoint[]
   ): Promise<Input[]> => {
-    const cellEntities: (OutputEntity | MultisigOutput)[] = await (!lockClass.args
-      ? CellsService.getLiveOrSentCellByWalletId(walletId, lockClass)
-      : CellsService.getLiveOrSentCellByLockArgsMultisigOutput({
-          codeHash: lockClass.codeHash,
-          hashType: lockClass.hashType,
-          lockArgs: [lockClass.args],
-        }))
+    let cellEntities: (OutputEntity | MultisigOutput)[] = []
+    if (consumeOutPoints?.length) {
+      cellEntities = await CellsService.getLiveOrSendCellByOutPoints(consumeOutPoints)
+    } else if (lockClass.args) {
+      cellEntities = await CellsService.getLiveOrSentCellByLockArgsMultisigOutput({
+        codeHash: lockClass.codeHash,
+        hashType: lockClass.hashType,
+        lockArgs: [lockClass.args],
+      })
+    } else {
+      cellEntities = await CellsService.getLiveOrSentCellByWalletId(walletId, lockClass)
+    }
 
     const inputs: Input[] = cellEntities
       .filter(v => v.status === OutputStatus.Live)
@@ -1032,27 +1128,6 @@ export default class CellsService {
     }
   }
 
-  public static allBlake160s = async (): Promise<string[]> => {
-    const outputEntities = await getConnection().getRepository(OutputEntity).createQueryBuilder('output').getMany()
-    const blake160s: string[] = outputEntities
-      .map(output => {
-        const lock = output.lockScript()
-        if (!lock) {
-          return undefined
-        }
-        const { args } = lock
-        if (!args) {
-          return undefined
-        }
-        return args
-      })
-      .filter(blake160 => !!blake160) as string[]
-
-    const uniqueBlake160s = [...new Set(blake160s)]
-
-    return uniqueBlake160s
-  }
-
   public static async gatherLegacyACPInputs(walletId: string) {
     const assetAccountInfo = new AssetAccountInfo()
     const legacyACPScriptInfo = assetAccountInfo.getLegacyAnyoneCanPayInfo()
@@ -1184,5 +1259,44 @@ export default class CellsService {
     })
 
     return balances
+  }
+
+  public static getCellLockType(output: CKBComponents.CellOutput): LockScriptType {
+    const assetAccountInfo = new AssetAccountInfo()
+    switch (output.lock.codeHash) {
+      case assetAccountInfo.getChequeInfo().codeHash:
+        return LockScriptType.Cheque
+      case SystemScriptInfo.MULTI_SIGN_CODE_HASH:
+        if (output.lock.args.length === LOCKTIME_ARGS_LENGTH) {
+          return LockScriptType.MULTI_LOCK_TIME
+        }
+        return LockScriptType.MULTISIG
+      case assetAccountInfo.anyoneCanPayCodeHash:
+        return LockScriptType.ANYONE_CAN_PAY
+      case SystemScriptInfo.SECP_CODE_HASH:
+        return LockScriptType.SECP256K1
+      default:
+        return LockScriptType.Unknown
+    }
+  }
+
+  public static getCellTypeType(output: CKBComponents.CellOutput): TypeScriptType | undefined {
+    const assetAccountInfo = new AssetAccountInfo()
+    if (output.type) {
+      switch (output.type.codeHash) {
+        case assetAccountInfo.getNftInfo().codeHash:
+          return TypeScriptType.NFT
+        case assetAccountInfo.getNftIssuerInfo().codeHash:
+          return TypeScriptType.NFTIssuer
+        case assetAccountInfo.getNftClassInfo().codeHash:
+          return TypeScriptType.NFTClass
+        case assetAccountInfo.getSudtCodeHash():
+          return TypeScriptType.SUDT
+        case SystemScriptInfo.DAO_CODE_HASH:
+          return TypeScriptType.DAO
+        default:
+          return TypeScriptType.Unknown
+      }
+    }
   }
 }
