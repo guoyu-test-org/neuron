@@ -513,7 +513,7 @@ const updateApplicationMenu = (mainWindow: BrowserWindow | null) => {
 
   const applicationMenuTemplate = env.isDevMode
     ? [walletMenuItem, editMenuItem, developMenuItem, toolsMenuItem, windowMenuItem, helpMenuItem]
-    : [walletMenuItem, editMenuItem, toolsMenuItem, windowMenuItem, helpMenuItem]
+    : [walletMenuItem, editMenuItem, developMenuItem, toolsMenuItem, windowMenuItem, helpMenuItem]
 
   if (isMac) {
     applicationMenuTemplate.unshift(appMenuItem)
